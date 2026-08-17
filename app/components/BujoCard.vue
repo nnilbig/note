@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { GripVertical, ChevronRight, Trash2 } from '@lucide/vue'
+import { GripVertical, ChevronRight, Trash2, Lock, Share2 } from '@lucide/vue'
 import type { Card, CardBucket } from '~/types/card'
 import { BUJO_GLYPHS } from '~/utils/bujoGlyph'
 
@@ -16,6 +16,10 @@ function remove() {
   if (!confirm(`刪除「${props.card.title}」？`)) return
   cards.deleteCard(props.card.id)
 }
+
+function toggleVisibility() {
+  cards.toggleCardVisibility(props.card.id)
+}
 </script>
 
 <template>
@@ -31,6 +35,16 @@ function remove() {
         <CardChecklist :card="card" />
       </div>
       <div class="flex shrink-0 items-center gap-0.5">
+        <button
+          type="button"
+          class="rounded p-1"
+          :class="card.visibility === 'shared' ? 'text-blue-500 hover:bg-blue-50' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'"
+          :title="card.visibility === 'shared' ? '已分享至專案，點擊改回私人' : '私人卡片，點擊分享至專案'"
+          @click="toggleVisibility"
+        >
+          <Share2 v-if="card.visibility === 'shared'" :size="14" />
+          <Lock v-else :size="14" />
+        </button>
         <button
           type="button"
           class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"

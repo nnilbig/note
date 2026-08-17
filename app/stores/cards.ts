@@ -220,6 +220,26 @@ export const useCardsStore = defineStore('cards', {
       this.flushing = false
     },
 
+    async toggleCardVisibility(cardId: string) {
+      if (!isOnline()) { this.error = OFFLINE_MESSAGE; return }
+
+      const card = this.cards.find(c => c.id === cardId)
+      if (!card) return
+      const previous = card.visibility
+      card.visibility = previous === 'private' ? 'shared' : 'private'
+
+      const supabase = useSupabaseClient()
+      const { error } = await supabase
+        .from('cards')
+        .update({ visibility: card.visibility })
+        .eq('id', cardId)
+
+      if (error) {
+        card.visibility = previous
+        this.error = error.message
+      }
+    },
+
     async deleteCard(cardId: string) {
       if (!isOnline()) { this.error = OFFLINE_MESSAGE; return }
 
