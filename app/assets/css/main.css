@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.bujo-glyph {
+  font-family: theme('fontFamily.glyph');
+  font-weight: 600;
+}
