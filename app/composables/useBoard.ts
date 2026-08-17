@@ -1,14 +1,23 @@
+import type { CardBucket } from '~/types/card'
 import { useCardsStore } from '~/stores/cards'
 
 export function useBoard() {
   const cards = useCardsStore()
-  const isMobile = useMediaQuery('(max-width: 767px)')
-  const activeBucket = ref<'week' | 'month'>('week')
+  // useState (not a plain ref) so AppHeader's search box and the board page
+  // share the same reactive state -- useBoard() is called from both.
+  const activeBucket = useState<CardBucket>('board-active-bucket', () => 'daily')
+  const searchQuery = useState<string>('board-search-query', () => '')
+
+  const activeCards = computed(() => {
+    const list = cards.cardsInBucket(activeBucket.value)
+    const query = searchQuery.value.trim().toLowerCase()
+    if (!query) return list
+    return list.filter(card => card.title.toLowerCase().includes(query))
+  })
 
   return {
-    weekCards: computed(() => cards.weekCards),
-    monthCards: computed(() => cards.monthCards),
-    isMobile,
-    activeBucket
+    activeBucket,
+    activeCards,
+    searchQuery
   }
 }

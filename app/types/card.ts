@@ -1,10 +1,12 @@
 export type BuJoSymbol = 'task' | 'completed' | 'migrated' | 'priority'
-export type CardBucket = 'week' | 'month'
+export type CardBucket = 'daily' | 'week' | 'month' | 'future'
 export type CardVisibility = 'private' | 'shared'
 export type MemberRole = 'owner' | 'member' | 'viewer'
+export type CardType = 'task' | 'project' | 'habit' | 'note'
 
 export interface CardDraft {
   bujoSymbol: BuJoSymbol
+  cardType: CardType
   title: string
   raw: string
 }
@@ -21,6 +23,7 @@ export interface Card {
   id: string
   project_id: string
   bujo_symbol: BuJoSymbol
+  card_type: CardType
   title: string
   progress: number
   visibility: CardVisibility

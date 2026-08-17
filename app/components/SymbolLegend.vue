@@ -10,5 +10,9 @@ const symbols = ['task', 'completed', 'migrated', 'priority'] as const
       <span class="bujo-glyph">{{ BUJO_GLYPHS[symbol] }}</span>
       {{ BUJO_LABELS[symbol] }}
     </span>
+    <span class="flex items-center gap-1">
+      <span class="bujo-glyph">!</span>
+      筆記
+    </span>
   </div>
 </template>

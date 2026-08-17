@@ -25,8 +25,8 @@ export const useCardsStore = defineStore('cards', {
   }),
 
   getters: {
-    weekCards: state => state.cards.filter(c => c.bucket === 'week').sort((a, b) => a.position - b.position),
-    monthCards: state => state.cards.filter(c => c.bucket === 'month').sort((a, b) => a.position - b.position)
+    cardsInBucket: state => (bucket: CardBucket) =>
+      state.cards.filter(c => c.bucket === bucket).sort((a, b) => a.position - b.position)
   },
 
   actions: {
@@ -95,7 +95,7 @@ export const useCardsStore = defineStore('cards', {
       }
     },
 
-    async addCard(draft: CardDraft, bucket: CardBucket = 'week') {
+    async addCard(draft: CardDraft, bucket: CardBucket = 'daily') {
       if (!this.project) return
       const user = useSupabaseUser()
 
@@ -104,6 +104,7 @@ export const useCardsStore = defineStore('cards', {
         id: tempId,
         project_id: this.project.id,
         bujo_symbol: draft.bujoSymbol,
+        card_type: draft.cardType,
         title: draft.title,
         progress: 0,
         visibility: 'private',
@@ -126,6 +127,7 @@ export const useCardsStore = defineStore('cards', {
         .insert({
           project_id: this.project.id,
           bujo_symbol: draft.bujoSymbol,
+          card_type: draft.cardType,
           title: draft.title,
           bucket,
           position: optimisticCard.position
@@ -172,6 +174,7 @@ export const useCardsStore = defineStore('cards', {
           id: pending.localId,
           project_id: pending.projectId,
           bujo_symbol: pending.draft.bujoSymbol,
+          card_type: pending.draft.cardType,
           title: pending.draft.title,
           progress: 0,
           visibility: 'private',
@@ -196,6 +199,7 @@ export const useCardsStore = defineStore('cards', {
           .insert({
             project_id: pending.projectId,
             bujo_symbol: pending.draft.bujoSymbol,
+            card_type: pending.draft.cardType,
             title: pending.draft.title,
             bucket: pending.bucket,
             position: pending.position
@@ -236,6 +240,26 @@ export const useCardsStore = defineStore('cards', {
 
       if (error) {
         card.visibility = previous
+        this.error = error.message
+      }
+    },
+
+    async setCardType(cardId: string, cardType: Card['card_type']) {
+      if (!isOnline()) { this.error = OFFLINE_MESSAGE; return }
+
+      const card = this.cards.find(c => c.id === cardId)
+      if (!card) return
+      const previous = card.card_type
+      card.card_type = cardType
+
+      const supabase = useSupabaseClient()
+      const { error } = await supabase
+        .from('cards')
+        .update({ card_type: cardType })
+        .eq('id', cardId)
+
+      if (error) {
+        card.card_type = previous
         this.error = error.message
       }
     },

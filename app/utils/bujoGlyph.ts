@@ -8,8 +8,8 @@ export const BUJO_GLYPHS: Record<BuJoSymbol, string> = {
 }
 
 export const BUJO_LABELS: Record<BuJoSymbol, string> = {
-  task: 'Task',
-  completed: 'Completed',
-  migrated: 'Migrated',
-  priority: 'Priority'
+  task: '任務',
+  completed: '完成',
+  migrated: '順延',
+  priority: '優先'
 }

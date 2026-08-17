@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { GripVertical, ChevronRight, Trash2, Lock, Share2 } from '@lucide/vue'
-import type { Card, CardBucket } from '~/types/card'
+import type { Card } from '~/types/card'
 import { BUJO_GLYPHS } from '~/utils/bujoGlyph'
+import { BUCKET_LABELS, nextBucket } from '~/utils/bucketLabel'
+import { CARD_TYPE_LABELS, CARD_TYPE_OPTIONS } from '~/utils/cardTypeLabel'
 
 const props = defineProps<{ card: Card }>()
 const cards = useCardsStore()
 
 function migrate() {
-  const target: CardBucket = props.card.bucket === 'week' ? 'month' : 'week'
-  const position = target === 'week' ? cards.weekCards.length : cards.monthCards.length
+  const target = nextBucket(props.card.bucket)
+  const position = cards.cardsInBucket(target).length
   cards.moveCard(props.card.id, target, position)
 }
 
@@ -20,6 +22,21 @@ function remove() {
 function toggleVisibility() {
   cards.toggleCardVisibility(props.card.id)
 }
+
+function onCardTypeChange(event: Event) {
+  const value = (event.target as HTMLSelectElement).value as Card['card_type']
+  cards.setCardType(props.card.id, value)
+}
+
+const completedAt = computed(() => {
+  if (props.card.bujo_symbol !== 'completed') return null
+  return new Date(props.card.updated_at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })
+})
+
+const migratedNote = computed(() => {
+  if (props.card.bujo_symbol !== 'migrated') return null
+  return `已順延至${BUCKET_LABELS[props.card.bucket]}`
+})
 </script>
 
 <template>
@@ -28,10 +45,32 @@ function toggleVisibility() {
       <GripVertical :size="14" class="drag-handle mt-0.5 shrink-0 cursor-grab text-gray-300" />
       <span class="bujo-glyph shrink-0 text-gray-500">{{ BUJO_GLYPHS[card.bujo_symbol] }}</span>
       <div class="min-w-0 flex-1">
-        <p class="text-sm text-gray-800" :class="{ 'text-gray-400 line-through': card.bujo_symbol === 'completed' }">
+        <div class="flex items-center gap-1.5">
+          <select
+            class="rounded border-0 bg-gray-100 px-1 py-0.5 text-xs text-gray-500 focus:outline-none"
+            :value="card.card_type"
+            @change="onCardTypeChange"
+          >
+            <option v-for="type in CARD_TYPE_OPTIONS" :key="type" :value="type">
+              [{{ CARD_TYPE_LABELS[type] }}]
+            </option>
+          </select>
+        </div>
+        <p class="mt-1 text-sm text-gray-800" :class="{ 'text-gray-400 line-through': card.bujo_symbol === 'completed' }">
           {{ card.title }}
         </p>
-        <ProgressBar v-if="card.checklist.length" :progress="card.progress" class="mt-2" />
+        <p v-if="completedAt" class="mt-0.5 text-xs text-gray-400">
+          完成於 {{ completedAt }}
+        </p>
+        <p v-if="migratedNote" class="mt-0.5 text-xs text-gray-400">
+          ({{ migratedNote }})
+        </p>
+        <template v-if="card.checklist.length">
+          <p class="mt-1 text-xs text-gray-400">
+            狀態: 進行中 進度: {{ card.progress }}%
+          </p>
+          <ProgressBar :progress="card.progress" class="mt-1" />
+        </template>
         <CardChecklist :card="card" />
       </div>
       <div class="flex shrink-0 items-center gap-0.5">
@@ -48,7 +87,7 @@ function toggleVisibility() {
         <button
           type="button"
           class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-          :title="card.bucket === 'week' ? '搬移到本月' : '搬移到本週'"
+          :title="`搬移到${BUCKET_LABELS[nextBucket(card.bucket)]}`"
           @click="migrate"
         >
           <ChevronRight :size="16" />
