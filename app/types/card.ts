@@ -45,3 +45,23 @@ export interface Workspace {
   type: 'personal' | 'team'
   owner_id: string
 }
+
+export interface BoardSnapshot {
+  userId: string
+  workspace: Workspace
+  project: Project
+  cards: Card[]
+  cachedAt: string
+}
+
+export interface PendingCard {
+  localId: string
+  userId: string
+  projectId: string
+  draft: CardDraft
+  bucket: CardBucket
+  position: number
+  createdAt: string
+  status: 'pending' | 'failed'
+  lastError?: string
+}
