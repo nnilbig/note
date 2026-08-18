@@ -22,6 +22,15 @@ function toggleVisibility() {
   cards.toggleCardVisibility(props.card.id)
 }
 
+const canToggleDone = computed(() =>
+  props.card.bujo_symbol !== 'note' && props.card.bujo_symbol !== 'migrated'
+)
+
+function toggleDone() {
+  if (!canToggleDone.value) return
+  cards.toggleCardDone(props.card.id)
+}
+
 const completedAt = computed(() => {
   if (props.card.bujo_symbol !== 'completed') return null
   return new Date(props.card.updated_at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })
@@ -37,7 +46,14 @@ const migratedNote = computed(() => {
   <div class="rounded-md border border-gray-200 bg-white p-3 shadow-sm">
     <div class="flex items-start gap-2">
       <GripVertical :size="14" class="drag-handle mt-0.5 shrink-0 cursor-grab text-gray-300" />
-      <span class="bujo-glyph shrink-0 text-gray-500">{{ BUJO_GLYPHS[card.bujo_symbol] }}</span>
+      <button
+        v-if="canToggleDone"
+        type="button"
+        class="bujo-glyph shrink-0 text-gray-500 hover:text-gray-900"
+        :title="card.bujo_symbol === 'completed' ? '點擊改回待辦' : '點擊標記完成'"
+        @click="toggleDone"
+      >{{ BUJO_GLYPHS[card.bujo_symbol] }}</button>
+      <span v-else class="bujo-glyph shrink-0 text-gray-500">{{ BUJO_GLYPHS[card.bujo_symbol] }}</span>
       <div class="min-w-0 flex-1">
         <p class="text-sm text-gray-800" :class="{ 'text-gray-400 line-through': card.bujo_symbol === 'completed' }">
           {{ card.title }}

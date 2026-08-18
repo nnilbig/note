@@ -230,6 +230,29 @@ export const useCardsStore = defineStore('cards', {
       }
     },
 
+    async toggleCardDone(cardId: string) {
+      if (!isOnline()) { this.error = OFFLINE_MESSAGE; return }
+
+      const card = this.cards.find(c => c.id === cardId)
+      // 'note' isn't a task and has nothing to complete; 'migrated' is a
+      // terminal state owned by the migrate button, not this toggle.
+      if (!card || card.bujo_symbol === 'note' || card.bujo_symbol === 'migrated') return
+
+      const previous = card.bujo_symbol
+      card.bujo_symbol = previous === 'completed' ? 'task' : 'completed'
+
+      const supabase = useSupabaseClient()
+      const { error } = await supabase
+        .from('cards')
+        .update({ bujo_symbol: card.bujo_symbol })
+        .eq('id', cardId)
+
+      if (error) {
+        card.bujo_symbol = previous
+        this.error = error.message
+      }
+    },
+
     async deleteCard(cardId: string) {
       if (!isOnline()) { this.error = OFFLINE_MESSAGE; return }
 
