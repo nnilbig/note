@@ -10,6 +10,7 @@ describe('parseRapidLogEntry', () => {
       scheduledStart: null,
       scheduledEnd: null,
       isShallowTask: false,
+      targetDate: null,
       raw: '• Buy milk'
     })
   })
@@ -62,6 +63,7 @@ describe('parseRapidLogEntry', () => {
       scheduledStart: null,
       scheduledEnd: null,
       isShallowTask: false,
+      targetDate: null,
       raw: '• 晨跑 30 分鐘 #跑步'
     })
   })
@@ -123,6 +125,7 @@ describe('parseRapidLogEntry', () => {
       scheduledStart: '09:00:00',
       scheduledEnd: '09:10:00',
       isShallowTask: true,
+      targetDate: null,
       raw: '~ x 0900-0910 回信 #email'
     })
   })
@@ -146,5 +149,35 @@ describe('parseRapidLogEntry', () => {
 
   it('has no creation-time trigger for cancelled -- untagged text stays task', () => {
     expect(parseRapidLogEntry('~ Random text')).toMatchObject({ bujoSymbol: 'task' })
+  })
+
+  it('parses a day-of-month for an event and strips it from the title', () => {
+    const now = new Date()
+    const expected = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-15`
+    expect(parseRapidLogEntry('@15 Team meeting')).toMatchObject({
+      bujoSymbol: 'event',
+      title: 'Team meeting',
+      targetDate: expected
+    })
+  })
+
+  it('does not misread a title starting with a number as a day-of-month', () => {
+    expect(parseRapidLogEntry('@ 30th Birthday Party')).toMatchObject({
+      bujoSymbol: 'event',
+      title: '30th Birthday Party',
+      targetDate: null
+    })
+  })
+
+  it('defaults targetDate to null for non-event symbols even with a leading number', () => {
+    expect(parseRapidLogEntry('• 15 Buy milk')).toMatchObject({
+      bujoSymbol: 'task',
+      title: '15 Buy milk',
+      targetDate: null
+    })
+  })
+
+  it('defaults targetDate to null for an event with no day given', () => {
+    expect(parseRapidLogEntry('@ Team offsite')).toMatchObject({ targetDate: null })
   })
 })

@@ -28,12 +28,23 @@ const TIME_RANGE_PATTERN = /^(\d{1,2}:?\d{2})\s*-\s*(\d{1,2}:?\d{2})\s*/
 // article's remote-work Daily Log format.
 const SHALLOW_PATTERN = /^~\s*/
 
+// Day-of-month for an event, e.g. "@15 Team meeting" -> the 15th of the
+// current month. Requires trailing whitespace (not just \s*) so a title
+// that happens to start with a number -- "30th Birthday Party" -- isn't
+// misread as day 30 with the title mangled down to "th Birthday Party".
+const EVENT_DAY_PATTERN = /^(\d{1,2})\s+/
+
 function normalizeClockTime(value: string): string {
   const digits = value.includes(':') ? value.replace(':', '') : value
   const padded = digits.padStart(4, '0')
   const hours = padded.slice(0, -2)
   const minutes = padded.slice(-2)
   return `${hours.padStart(2, '0')}:${minutes}:00`
+}
+
+function currentMonthDate(day: number): string {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
 export function parseRapidLogEntry(raw: string): CardDraft {
@@ -60,8 +71,17 @@ export function parseRapidLogEntry(raw: string): CardDraft {
     rest = rest.replace(TIME_RANGE_PATTERN, '')
   }
 
+  let targetDate: string | null = null
+  if (symbol === 'event') {
+    const dayMatch = rest.match(EVENT_DAY_PATTERN)
+    if (dayMatch) {
+      targetDate = currentMonthDate(Number(dayMatch[1]))
+      rest = rest.replace(EVENT_DAY_PATTERN, '')
+    }
+  }
+
   const tags = [...new Set([...rest.matchAll(TAG_PATTERN)].map(m => m[1]))]
   const title = rest.replace(TAG_PATTERN, '').replace(/\s+/g, ' ').trim()
 
-  return { bujoSymbol: symbol, title, tags, scheduledStart, scheduledEnd, isShallowTask, raw }
+  return { bujoSymbol: symbol, title, tags, scheduledStart, scheduledEnd, isShallowTask, targetDate, raw }
 }

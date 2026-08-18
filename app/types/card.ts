@@ -10,6 +10,7 @@ export interface CardDraft {
   scheduledStart: string | null
   scheduledEnd: string | null
   isShallowTask: boolean
+  targetDate: string | null
   raw: string
 }
 
