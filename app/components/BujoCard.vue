@@ -31,6 +31,29 @@ function toggleDone() {
   cards.toggleCardDone(props.card.id)
 }
 
+const editingTitle = ref(false)
+const titleDraft = ref('')
+const titleInput = ref<HTMLInputElement | null>(null)
+
+function startEditTitle() {
+  titleDraft.value = props.card.title
+  editingTitle.value = true
+  nextTick(() => titleInput.value?.focus())
+}
+
+function commitEditTitle() {
+  if (!editingTitle.value) return
+  editingTitle.value = false
+  const trimmed = titleDraft.value.trim()
+  if (trimmed && trimmed !== props.card.title) {
+    cards.updateCardTitle(props.card.id, trimmed)
+  }
+}
+
+function cancelEditTitle() {
+  editingTitle.value = false
+}
+
 const completedAt = computed(() => {
   if (props.card.bujo_symbol !== 'completed') return null
   return new Date(props.card.updated_at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })
@@ -55,7 +78,23 @@ const migratedNote = computed(() => {
       >{{ BUJO_GLYPHS[card.bujo_symbol] }}</button>
       <span v-else class="bujo-glyph shrink-0 text-gray-500">{{ BUJO_GLYPHS[card.bujo_symbol] }}</span>
       <div class="min-w-0 flex-1">
-        <p class="text-sm text-gray-800" :class="{ 'text-gray-400 line-through': card.bujo_symbol === 'completed' }">
+        <input
+          v-if="editingTitle"
+          ref="titleInput"
+          v-model="titleDraft"
+          type="text"
+          class="w-full rounded border border-gray-300 px-1 py-0.5 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
+          @keyup.enter="commitEditTitle"
+          @keyup.esc="cancelEditTitle"
+          @blur="commitEditTitle"
+        >
+        <p
+          v-else
+          class="cursor-text text-sm text-gray-800"
+          :class="{ 'text-gray-400 line-through': card.bujo_symbol === 'completed' }"
+          title="點擊編輯"
+          @click="startEditTitle"
+        >
           {{ card.title }}
         </p>
         <p v-if="completedAt" class="mt-0.5 text-xs text-gray-400">
@@ -64,6 +103,13 @@ const migratedNote = computed(() => {
         <p v-if="migratedNote" class="mt-0.5 text-xs text-gray-400">
           ({{ migratedNote }})
         </p>
+        <div v-if="card.tags.length" class="mt-1 flex flex-wrap gap-1">
+          <span
+            v-for="tag in card.tags"
+            :key="tag"
+            class="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500"
+          >#{{ tag }}</span>
+        </div>
         <template v-if="card.checklist.length">
           <p class="mt-1 text-xs text-gray-400">
             狀態: 進行中 進度: {{ card.progress_percent }}%

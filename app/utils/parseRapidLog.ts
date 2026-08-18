@@ -11,14 +11,25 @@ const RULES: Array<{ pattern: RegExp, symbol: BuJoSymbol }> = [
   { pattern: /^!\s*/, symbol: 'note' }
 ]
 
+// No \w-based pattern here since \w is ASCII-only and would miss tags like
+// #跑步/#閱讀 -- match any run of non-whitespace, non-# characters instead.
+const TAG_PATTERN = /#([^\s#]+)/g
+
 export function parseRapidLogEntry(raw: string): CardDraft {
   const trimmed = raw.trim()
 
-  for (const { pattern, symbol } of RULES) {
-    if (pattern.test(trimmed)) {
-      return { bujoSymbol: symbol, title: trimmed.replace(pattern, '').trim(), raw }
+  let symbol: BuJoSymbol = 'task'
+  let rest = trimmed
+  for (const rule of RULES) {
+    if (rule.pattern.test(trimmed)) {
+      symbol = rule.symbol
+      rest = trimmed.replace(rule.pattern, '')
+      break
     }
   }
 
-  return { bujoSymbol: 'task', title: trimmed, raw }
+  const tags = [...new Set([...rest.matchAll(TAG_PATTERN)].map(m => m[1]))]
+  const title = rest.replace(TAG_PATTERN, '').replace(/\s+/g, ' ').trim()
+
+  return { bujoSymbol: symbol, title, tags, raw }
 }

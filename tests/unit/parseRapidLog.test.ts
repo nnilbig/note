@@ -6,6 +6,7 @@ describe('parseRapidLogEntry', () => {
     expect(parseRapidLogEntry('• Buy milk')).toEqual({
       bujoSymbol: 'task',
       title: 'Buy milk',
+      tags: [],
       raw: '• Buy milk'
     })
   })
@@ -48,5 +49,32 @@ describe('parseRapidLogEntry', () => {
 
   it('does not misread a word starting with x as completed', () => {
     expect(parseRapidLogEntry('xylophone lessons')).toMatchObject({ bujoSymbol: 'task', title: 'xylophone lessons' })
+  })
+
+  it('extracts a single tag and strips it from the title', () => {
+    expect(parseRapidLogEntry('• 晨跑 30 分鐘 #跑步')).toEqual({
+      bujoSymbol: 'task',
+      title: '晨跑 30 分鐘',
+      tags: ['跑步'],
+      raw: '• 晨跑 30 分鐘 #跑步'
+    })
+  })
+
+  it('extracts multiple tags regardless of position', () => {
+    expect(parseRapidLogEntry('#閱讀 讀完一章 #習慣')).toMatchObject({
+      title: '讀完一章',
+      tags: ['閱讀', '習慣']
+    })
+  })
+
+  it('dedupes repeated tags', () => {
+    expect(parseRapidLogEntry('• #跑步 晨跑 #跑步')).toMatchObject({
+      title: '晨跑',
+      tags: ['跑步']
+    })
+  })
+
+  it('defaults to an empty tags array when none are present', () => {
+    expect(parseRapidLogEntry('Just typed text')).toMatchObject({ tags: [] })
   })
 })

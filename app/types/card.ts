@@ -6,6 +6,7 @@ export type MemberRole = 'owner' | 'member' | 'viewer'
 export interface CardDraft {
   bujoSymbol: BuJoSymbol
   title: string
+  tags: string[]
   raw: string
 }
 
@@ -23,6 +24,7 @@ export interface Card {
   bujo_symbol: BuJoSymbol
   title: string
   content: string | null
+  tags: string[]
   progress_percent: number
   visibility: CardVisibility
   time_frame: TimeFrame

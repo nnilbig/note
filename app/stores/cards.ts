@@ -94,6 +94,7 @@ export const useCardsStore = defineStore('cards', {
         bujo_symbol: draft.bujoSymbol,
         title: draft.title,
         content: null,
+        tags: draft.tags,
         progress_percent: 0,
         visibility: 'private',
         time_frame: timeFrame,
@@ -117,6 +118,7 @@ export const useCardsStore = defineStore('cards', {
           owner_id: user.value.sub,
           bujo_symbol: draft.bujoSymbol,
           title: draft.title,
+          tags: draft.tags,
           time_frame: timeFrame,
           position: optimisticCard.position
         })
@@ -162,6 +164,7 @@ export const useCardsStore = defineStore('cards', {
           bujo_symbol: pending.draft.bujoSymbol,
           title: pending.draft.title,
           content: null,
+          tags: pending.draft.tags,
           progress_percent: 0,
           visibility: 'private',
           time_frame: pending.timeFrame,
@@ -187,6 +190,7 @@ export const useCardsStore = defineStore('cards', {
             owner_id: pending.userId,
             bujo_symbol: pending.draft.bujoSymbol,
             title: pending.draft.title,
+            tags: pending.draft.tags,
             time_frame: pending.timeFrame,
             position: pending.position
           })
@@ -249,6 +253,29 @@ export const useCardsStore = defineStore('cards', {
 
       if (error) {
         card.bujo_symbol = previous
+        this.error = error.message
+      }
+    },
+
+    async updateCardTitle(cardId: string, title: string) {
+      if (!isOnline()) { this.error = OFFLINE_MESSAGE; return }
+
+      const trimmed = title.trim()
+      if (!trimmed) return
+
+      const card = this.cards.find(c => c.id === cardId)
+      if (!card || card.title === trimmed) return
+      const previous = card.title
+      card.title = trimmed
+
+      const supabase = useSupabaseClient()
+      const { error } = await supabase
+        .from('cards')
+        .update({ title: trimmed })
+        .eq('id', cardId)
+
+      if (error) {
+        card.title = previous
         this.error = error.message
       }
     },
