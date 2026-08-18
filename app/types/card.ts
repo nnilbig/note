@@ -7,6 +7,9 @@ export interface CardDraft {
   bujoSymbol: BuJoSymbol
   title: string
   tags: string[]
+  scheduledStart: string | null
+  scheduledEnd: string | null
+  isShallowTask: boolean
   raw: string
 }
 
@@ -29,10 +32,22 @@ export interface Card {
   visibility: CardVisibility
   time_frame: TimeFrame
   target_date: string | null
+  scheduled_start: string | null
+  scheduled_end: string | null
+  is_shallow_task: boolean
   position: number
   created_at: string
   updated_at: string
   checklist: ChecklistItem[]
+}
+
+export interface DailyReview {
+  id: string
+  owner_id: string
+  log_date: string
+  shutdown_note: string | null
+  created_at: string
+  updated_at: string
 }
 
 export interface Workspace {

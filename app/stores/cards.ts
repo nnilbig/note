@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import type { Card, CardDraft, ChecklistItem, PendingCard, TimeFrame, Workspace } from '~/types/card'
+import type { Card, CardDraft, ChecklistItem, DailyReview, PendingCard, TimeFrame, Workspace } from '~/types/card'
 import { computeProgress } from '~/utils/progress'
 import { isNetworkError, isOnline } from '~/utils/networkError'
 import {
@@ -18,6 +18,7 @@ export const useCardsStore = defineStore('cards', {
     workspace: null as Workspace | null,
     cards: [] as Card[],
     pendingCards: [] as PendingCard[],
+    dailyReview: null as DailyReview | null,
     flushing: false,
     loading: false,
     error: null as string | null
@@ -99,6 +100,9 @@ export const useCardsStore = defineStore('cards', {
         visibility: 'private',
         time_frame: timeFrame,
         target_date: null,
+        scheduled_start: draft.scheduledStart,
+        scheduled_end: draft.scheduledEnd,
+        is_shallow_task: draft.isShallowTask,
         position: this.cards.filter(c => c.time_frame === timeFrame).length,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -120,6 +124,9 @@ export const useCardsStore = defineStore('cards', {
           title: draft.title,
           tags: draft.tags,
           time_frame: timeFrame,
+          scheduled_start: draft.scheduledStart,
+          scheduled_end: draft.scheduledEnd,
+          is_shallow_task: draft.isShallowTask,
           position: optimisticCard.position
         })
         .select('*, checklist:card_checklist_items(*)')
@@ -169,6 +176,9 @@ export const useCardsStore = defineStore('cards', {
           visibility: 'private',
           time_frame: pending.timeFrame,
           target_date: null,
+          scheduled_start: pending.draft.scheduledStart,
+          scheduled_end: pending.draft.scheduledEnd,
+          is_shallow_task: pending.draft.isShallowTask,
           position: pending.position,
           created_at: pending.createdAt,
           updated_at: pending.createdAt,
@@ -192,6 +202,9 @@ export const useCardsStore = defineStore('cards', {
             title: pending.draft.title,
             tags: pending.draft.tags,
             time_frame: pending.timeFrame,
+            scheduled_start: pending.draft.scheduledStart,
+            scheduled_end: pending.draft.scheduledEnd,
+            is_shallow_task: pending.draft.isShallowTask,
             position: pending.position
           })
           .select('*, checklist:card_checklist_items(*)')
@@ -278,6 +291,48 @@ export const useCardsStore = defineStore('cards', {
         card.title = previous
         this.error = error.message
       }
+    },
+
+    async fetchDailyReview(logDate: string) {
+      const supabase = useSupabaseClient()
+      const user = useSupabaseUser()
+      if (!user.value) return
+
+      const { data, error } = await supabase
+        .from('daily_reviews')
+        .select('*')
+        .eq('owner_id', user.value.sub)
+        .eq('log_date', logDate)
+        .maybeSingle()
+
+      if (error) {
+        if (isNetworkError(error)) return
+        this.error = error.message
+        return
+      }
+      this.dailyReview = data as DailyReview | null
+    },
+
+    async saveShutdownNote(logDate: string, note: string) {
+      if (!isOnline()) { this.error = OFFLINE_MESSAGE; return }
+      const supabase = useSupabaseClient()
+      const user = useSupabaseUser()
+      if (!user.value) return
+
+      const { data, error } = await supabase
+        .from('daily_reviews')
+        .upsert(
+          { owner_id: user.value.sub, log_date: logDate, shutdown_note: note },
+          { onConflict: 'owner_id,log_date' }
+        )
+        .select()
+        .single()
+
+      if (error) {
+        this.error = error.message
+        return
+      }
+      this.dailyReview = data as DailyReview
     },
 
     async deleteCard(cardId: string) {

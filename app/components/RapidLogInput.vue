@@ -13,7 +13,7 @@ const { draft, submit } = useRapidLogInput()
         <input
           v-model="draft"
           type="text"
-          placeholder="• task   ✕ done   > migrate   * priority   ! note   #tag"
+          placeholder="• task   ✕ done   > migrate   * priority   ! note   #tag   0900-0930 time-block   ~ shallow"
           class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
           @keyup.enter="submit"
         >

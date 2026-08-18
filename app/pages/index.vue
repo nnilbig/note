@@ -15,9 +15,11 @@ onMounted(() => {
 
     <LogTabs v-model="activeTimeFrame" />
 
-    <BucketProgressSummary :time-frame="activeTimeFrame" :cards="activeCards" />
-
-    <BoardColumn :time-frame="activeTimeFrame" :cards="activeCards" />
+    <DailyTimeBlockView v-if="activeTimeFrame === 'daily'" :cards="activeCards" />
+    <template v-else>
+      <BucketProgressSummary :time-frame="activeTimeFrame" :cards="activeCards" />
+      <BoardColumn :time-frame="activeTimeFrame" :cards="activeCards" />
+    </template>
 
     <RapidLogInput />
   </div>

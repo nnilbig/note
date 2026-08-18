@@ -7,6 +7,9 @@ describe('parseRapidLogEntry', () => {
       bujoSymbol: 'task',
       title: 'Buy milk',
       tags: [],
+      scheduledStart: null,
+      scheduledEnd: null,
+      isShallowTask: false,
       raw: '• Buy milk'
     })
   })
@@ -56,6 +59,9 @@ describe('parseRapidLogEntry', () => {
       bujoSymbol: 'task',
       title: '晨跑 30 分鐘',
       tags: ['跑步'],
+      scheduledStart: null,
+      scheduledEnd: null,
+      isShallowTask: false,
       raw: '• 晨跑 30 分鐘 #跑步'
     })
   })
@@ -76,5 +82,48 @@ describe('parseRapidLogEntry', () => {
 
   it('defaults to an empty tags array when none are present', () => {
     expect(parseRapidLogEntry('Just typed text')).toMatchObject({ tags: [] })
+  })
+
+  it('parses a 4-digit time range after the symbol', () => {
+    expect(parseRapidLogEntry('• 0900-0930 深度工作')).toMatchObject({
+      title: '深度工作',
+      scheduledStart: '09:00:00',
+      scheduledEnd: '09:30:00'
+    })
+  })
+
+  it('parses a colon-separated time range', () => {
+    expect(parseRapidLogEntry('9:00-9:30 深度工作')).toMatchObject({
+      scheduledStart: '09:00:00',
+      scheduledEnd: '09:30:00'
+    })
+  })
+
+  it('defaults schedule to null when no time range is present', () => {
+    expect(parseRapidLogEntry('• Buy milk')).toMatchObject({ scheduledStart: null, scheduledEnd: null })
+  })
+
+  it('marks a shallow task with a leading ~', () => {
+    expect(parseRapidLogEntry('~ 回信 #email')).toMatchObject({
+      title: '回信',
+      tags: ['email'],
+      isShallowTask: true
+    })
+  })
+
+  it('defaults isShallowTask to false without the ~ marker', () => {
+    expect(parseRapidLogEntry('• Buy milk')).toMatchObject({ isShallowTask: false })
+  })
+
+  it('combines shallow marker, symbol, time range, and tags', () => {
+    expect(parseRapidLogEntry('~ x 0900-0910 回信 #email')).toEqual({
+      bujoSymbol: 'completed',
+      title: '回信',
+      tags: ['email'],
+      scheduledStart: '09:00:00',
+      scheduledEnd: '09:10:00',
+      isShallowTask: true,
+      raw: '~ x 0900-0910 回信 #email'
+    })
   })
 })
