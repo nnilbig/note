@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LogOut, Search } from '@lucide/vue'
+import { LogOut, Search, Tags } from '@lucide/vue'
 import { formatHeaderDate } from '~/utils/isoWeek'
 
 const supabase = useSupabaseClient()
@@ -23,14 +23,19 @@ async function logout() {
           </p>
           <span class="font-semibold text-gray-800">{{ cards.workspace?.name ?? 'WHONEXT' }}</span>
         </div>
-        <button
-          type="button"
-          class="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800"
-          @click="logout"
-        >
-          <LogOut :size="16" />
-          登出
-        </button>
+        <div class="flex items-center gap-3">
+          <NuxtLink to="/collections" class="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800" title="索引 · 專題">
+            <Tags :size="16" />
+          </NuxtLink>
+          <button
+            type="button"
+            class="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800"
+            @click="logout"
+          >
+            <LogOut :size="16" />
+            登出
+          </button>
+        </div>
       </div>
       <div class="relative mt-2">
         <Search :size="14" class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
