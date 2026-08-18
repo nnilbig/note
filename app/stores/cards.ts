@@ -276,6 +276,31 @@ export const useCardsStore = defineStore('cards', {
       }
     },
 
+    // Direct cancel for the migration assistant's "✕ 取消" button -- unlike
+    // advanceCardState's cycle (which only reaches 'cancelled' via
+    // migrated/scheduled), review time lets you cancel a still-open task
+    // outright without migrating it anywhere first.
+    async cancelCard(cardId: string) {
+      if (!isOnline()) { this.error = OFFLINE_MESSAGE; return }
+
+      const card = this.cards.find(c => c.id === cardId)
+      if (!card || card.bujo_symbol === 'note' || card.bujo_symbol === 'event') return
+
+      const previous = card.bujo_symbol
+      card.bujo_symbol = 'cancelled'
+
+      const supabase = useSupabaseClient()
+      const { error } = await supabase
+        .from('cards')
+        .update({ bujo_symbol: 'cancelled' })
+        .eq('id', cardId)
+
+      if (error) {
+        card.bujo_symbol = previous
+        this.error = error.message
+      }
+    },
+
     // Swipe-left / migrate-cycle: tasks and priorities step forward through
     // time frames, flagged 'migrated' (or 'scheduled' when they land in the
     // Future Log specifically) -- swiping again cancels, and once more
