@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import draggable from 'vuedraggable'
-import type { Card, CardBucket } from '~/types/card'
+import type { Card, TimeFrame } from '~/types/card'
 
-const props = defineProps<{ bucket: CardBucket, cards: Card[] }>()
+const props = defineProps<{ timeFrame: TimeFrame, cards: Card[] }>()
 const cardsStore = useCardsStore()
 
 const localItems = ref<Card[]>([...props.cards])
@@ -13,7 +13,7 @@ watch(() => props.cards, (next) => {
 
 function onChange() {
   const orderedIds = localItems.value.map(c => c.id)
-  cardsStore.reorderCards(props.bucket, orderedIds)
+  cardsStore.reorderCards(props.timeFrame, orderedIds)
 }
 </script>
 

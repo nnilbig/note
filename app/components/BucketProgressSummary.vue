@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { Card, CardBucket } from '~/types/card'
-import { BUCKET_LABELS } from '~/utils/bucketLabel'
+import type { Card, TimeFrame } from '~/types/card'
+import { TIME_FRAME_LABELS } from '~/utils/timeFrameLabel'
 import { computeAverageProgress } from '~/utils/progress'
 
-const props = defineProps<{ bucket: CardBucket, cards: Card[] }>()
+const props = defineProps<{ timeFrame: TimeFrame, cards: Card[] }>()
 
 const progress = computed(() => computeAverageProgress(props.cards))
 </script>
@@ -11,7 +11,7 @@ const progress = computed(() => computeAverageProgress(props.cards))
 <template>
   <div class="mb-3">
     <div class="mb-1 flex items-center justify-between text-xs text-gray-500">
-      <span>{{ BUCKET_LABELS[bucket] }}進度</span>
+      <span>{{ TIME_FRAME_LABELS[timeFrame] }}進度</span>
       <span>{{ progress }}%</span>
     </div>
     <ProgressBar :progress="progress" />

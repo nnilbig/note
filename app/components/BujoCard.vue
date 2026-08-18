@@ -2,15 +2,14 @@
 import { GripVertical, ChevronRight, Trash2, Lock, Share2 } from '@lucide/vue'
 import type { Card } from '~/types/card'
 import { BUJO_GLYPHS } from '~/utils/bujoGlyph'
-import { BUCKET_LABELS, nextBucket } from '~/utils/bucketLabel'
-import { CARD_TYPE_LABELS, CARD_TYPE_OPTIONS } from '~/utils/cardTypeLabel'
+import { TIME_FRAME_LABELS, nextTimeFrame } from '~/utils/timeFrameLabel'
 
 const props = defineProps<{ card: Card }>()
 const cards = useCardsStore()
 
 function migrate() {
-  const target = nextBucket(props.card.bucket)
-  const position = cards.cardsInBucket(target).length
+  const target = nextTimeFrame(props.card.time_frame)
+  const position = cards.cardsInTimeFrame(target).length
   cards.moveCard(props.card.id, target, position)
 }
 
@@ -23,11 +22,6 @@ function toggleVisibility() {
   cards.toggleCardVisibility(props.card.id)
 }
 
-function onCardTypeChange(event: Event) {
-  const value = (event.target as HTMLSelectElement).value as Card['card_type']
-  cards.setCardType(props.card.id, value)
-}
-
 const completedAt = computed(() => {
   if (props.card.bujo_symbol !== 'completed') return null
   return new Date(props.card.updated_at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })
@@ -35,7 +29,7 @@ const completedAt = computed(() => {
 
 const migratedNote = computed(() => {
   if (props.card.bujo_symbol !== 'migrated') return null
-  return `已順延至${BUCKET_LABELS[props.card.bucket]}`
+  return `已順延至${TIME_FRAME_LABELS[props.card.time_frame]}`
 })
 </script>
 
@@ -45,18 +39,7 @@ const migratedNote = computed(() => {
       <GripVertical :size="14" class="drag-handle mt-0.5 shrink-0 cursor-grab text-gray-300" />
       <span class="bujo-glyph shrink-0 text-gray-500">{{ BUJO_GLYPHS[card.bujo_symbol] }}</span>
       <div class="min-w-0 flex-1">
-        <div class="flex items-center gap-1.5">
-          <select
-            class="rounded border-0 bg-gray-100 px-1 py-0.5 text-xs text-gray-500 focus:outline-none"
-            :value="card.card_type"
-            @change="onCardTypeChange"
-          >
-            <option v-for="type in CARD_TYPE_OPTIONS" :key="type" :value="type">
-              [{{ CARD_TYPE_LABELS[type] }}]
-            </option>
-          </select>
-        </div>
-        <p class="mt-1 text-sm text-gray-800" :class="{ 'text-gray-400 line-through': card.bujo_symbol === 'completed' }">
+        <p class="text-sm text-gray-800" :class="{ 'text-gray-400 line-through': card.bujo_symbol === 'completed' }">
           {{ card.title }}
         </p>
         <p v-if="completedAt" class="mt-0.5 text-xs text-gray-400">
@@ -67,9 +50,9 @@ const migratedNote = computed(() => {
         </p>
         <template v-if="card.checklist.length">
           <p class="mt-1 text-xs text-gray-400">
-            狀態: 進行中 進度: {{ card.progress }}%
+            狀態: 進行中 進度: {{ card.progress_percent }}%
           </p>
-          <ProgressBar :progress="card.progress" class="mt-1" />
+          <ProgressBar :progress="card.progress_percent" class="mt-1" />
         </template>
         <CardChecklist :card="card" />
       </div>
@@ -78,7 +61,7 @@ const migratedNote = computed(() => {
           type="button"
           class="rounded p-1"
           :class="card.visibility === 'shared' ? 'text-blue-500 hover:bg-blue-50' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'"
-          :title="card.visibility === 'shared' ? '已分享至專案，點擊改回私人' : '私人卡片，點擊分享至專案'"
+          :title="card.visibility === 'shared' ? '已分享至團隊，點擊改回私人' : '私人卡片，點擊分享至團隊'"
           @click="toggleVisibility"
         >
           <Share2 v-if="card.visibility === 'shared'" :size="14" />
@@ -87,7 +70,7 @@ const migratedNote = computed(() => {
         <button
           type="button"
           class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-          :title="`搬移到${BUCKET_LABELS[nextBucket(card.bucket)]}`"
+          :title="`搬移到${TIME_FRAME_LABELS[nextTimeFrame(card.time_frame)]}`"
           @click="migrate"
         >
           <ChevronRight :size="16" />

@@ -1,12 +1,10 @@
-export type BuJoSymbol = 'task' | 'completed' | 'migrated' | 'priority'
-export type CardBucket = 'daily' | 'week' | 'month' | 'future'
+export type BuJoSymbol = 'task' | 'completed' | 'migrated' | 'priority' | 'note'
+export type TimeFrame = 'daily' | 'weekly' | 'monthly' | 'future'
 export type CardVisibility = 'private' | 'shared'
 export type MemberRole = 'owner' | 'member' | 'viewer'
-export type CardType = 'task' | 'project' | 'habit' | 'note'
 
 export interface CardDraft {
   bujoSymbol: BuJoSymbol
-  cardType: CardType
   title: string
   raw: string
 }
@@ -21,25 +19,18 @@ export interface ChecklistItem {
 
 export interface Card {
   id: string
-  project_id: string
+  owner_id: string
   bujo_symbol: BuJoSymbol
-  card_type: CardType
   title: string
-  progress: number
+  content: string | null
+  progress_percent: number
   visibility: CardVisibility
-  bucket: CardBucket
+  time_frame: TimeFrame
+  target_date: string | null
   position: number
   created_at: string
   updated_at: string
   checklist: ChecklistItem[]
-}
-
-export interface Project {
-  id: string
-  workspace_id: string
-  title: string
-  cycle: 'daily' | 'weekly' | 'monthly'
-  target_date: string | null
 }
 
 export interface Workspace {
@@ -52,7 +43,6 @@ export interface Workspace {
 export interface BoardSnapshot {
   userId: string
   workspace: Workspace
-  project: Project
   cards: Card[]
   cachedAt: string
 }
@@ -60,9 +50,8 @@ export interface BoardSnapshot {
 export interface PendingCard {
   localId: string
   userId: string
-  projectId: string
   draft: CardDraft
-  bucket: CardBucket
+  timeFrame: TimeFrame
   position: number
   createdAt: string
   status: 'pending' | 'failed'

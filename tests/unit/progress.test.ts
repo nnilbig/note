@@ -25,10 +25,10 @@ describe('computeAverageProgress', () => {
   })
 
   it('averages progress across cards, rounded', () => {
-    expect(computeAverageProgress([{ progress: 100 }, { progress: 0 }, { progress: 50 }])).toBe(50)
+    expect(computeAverageProgress([{ progress_percent: 100 }, { progress_percent: 0 }, { progress_percent: 50 }])).toBe(50)
   })
 
   it('rounds a non-integer average', () => {
-    expect(computeAverageProgress([{ progress: 100 }, { progress: 0 }, { progress: 0 }])).toBe(33)
+    expect(computeAverageProgress([{ progress_percent: 100 }, { progress_percent: 0 }, { progress_percent: 0 }])).toBe(33)
   })
 })

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const cardsStore = useCardsStore()
-const { activeBucket, activeCards } = useBoard()
+const { activeTimeFrame, activeCards } = useBoard()
 
 onMounted(() => {
   cardsStore.fetchBoard()
@@ -13,11 +13,11 @@ onMounted(() => {
       {{ cardsStore.error }}
     </p>
 
-    <LogTabs v-model="activeBucket" />
+    <LogTabs v-model="activeTimeFrame" />
 
-    <BucketProgressSummary :bucket="activeBucket" :cards="activeCards" />
+    <BucketProgressSummary :time-frame="activeTimeFrame" :cards="activeCards" />
 
-    <BoardColumn :bucket="activeBucket" :cards="activeCards" />
+    <BoardColumn :time-frame="activeTimeFrame" :cards="activeCards" />
 
     <RapidLogInput />
   </div>

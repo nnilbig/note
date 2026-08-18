@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import type { Card, CardBucket, CardDraft, ChecklistItem, PendingCard, Project, Workspace } from '~/types/card'
+import type { Card, CardDraft, ChecklistItem, PendingCard, TimeFrame, Workspace } from '~/types/card'
 import { computeProgress } from '~/utils/progress'
 import { isNetworkError, isOnline } from '~/utils/networkError'
 import {
@@ -16,7 +16,6 @@ const OFFLINE_MESSAGE = '目前離線，此操作需要網路連線'
 export const useCardsStore = defineStore('cards', {
   state: () => ({
     workspace: null as Workspace | null,
-    project: null as Project | null,
     cards: [] as Card[],
     pendingCards: [] as PendingCard[],
     flushing: false,
@@ -25,8 +24,8 @@ export const useCardsStore = defineStore('cards', {
   }),
 
   getters: {
-    cardsInBucket: state => (bucket: CardBucket) =>
-      state.cards.filter(c => c.bucket === bucket).sort((a, b) => a.position - b.position)
+    cardsInTimeFrame: state => (timeFrame: TimeFrame) =>
+      state.cards.filter(c => c.time_frame === timeFrame).sort((a, b) => a.position - b.position)
   },
 
   actions: {
@@ -49,19 +48,10 @@ export const useCardsStore = defineStore('cards', {
 
         this.workspace = membership.workspaces as unknown as Workspace
 
-        const { data: project, error: projectError } = await supabase
-          .from('projects')
-          .select('id, workspace_id, title, cycle, target_date')
-          .eq('workspace_id', this.workspace.id)
-          .limit(1)
-          .single()
-        if (projectError) throw projectError
-        this.project = project as Project
-
         const { data: cards, error: cardsError } = await supabase
           .from('cards')
           .select('*, checklist:card_checklist_items(*)')
-          .eq('project_id', this.project.id)
+          .eq('owner_id', user.value.sub)
           .order('position', { ascending: true })
         if (cardsError) throw cardsError
 
@@ -72,7 +62,6 @@ export const useCardsStore = defineStore('cards', {
         await saveBoardSnapshot(JSON.parse(JSON.stringify({
           userId: user.value.sub,
           workspace: this.workspace,
-          project: this.project,
           cards: this.cards,
           cachedAt: new Date().toISOString()
         })))
@@ -81,7 +70,6 @@ export const useCardsStore = defineStore('cards', {
           const snapshot = await loadBoardSnapshot(user.value.sub)
           if (snapshot) {
             this.workspace = snapshot.workspace
-            this.project = snapshot.project
             this.cards = snapshot.cards
           } else {
             this.error = '目前離線，且尚無先前載入的資料'
@@ -95,21 +83,22 @@ export const useCardsStore = defineStore('cards', {
       }
     },
 
-    async addCard(draft: CardDraft, bucket: CardBucket = 'daily') {
-      if (!this.project) return
+    async addCard(draft: CardDraft, timeFrame: TimeFrame = 'daily') {
       const user = useSupabaseUser()
+      if (!user.value) return
 
       const tempId = `temp-${Date.now()}`
       const optimisticCard: Card = {
         id: tempId,
-        project_id: this.project.id,
+        owner_id: user.value.sub,
         bujo_symbol: draft.bujoSymbol,
-        card_type: draft.cardType,
         title: draft.title,
-        progress: 0,
+        content: null,
+        progress_percent: 0,
         visibility: 'private',
-        bucket,
-        position: this.cards.filter(c => c.bucket === bucket).length,
+        time_frame: timeFrame,
+        target_date: null,
+        position: this.cards.filter(c => c.time_frame === timeFrame).length,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         checklist: []
@@ -117,7 +106,7 @@ export const useCardsStore = defineStore('cards', {
       this.cards.push(optimisticCard)
 
       if (!isOnline()) {
-        if (user.value) await this.queueOfflineCard(tempId, draft, bucket, optimisticCard.position, user.value.sub)
+        await this.queueOfflineCard(tempId, draft, timeFrame, optimisticCard.position, user.value.sub)
         return
       }
 
@@ -125,11 +114,10 @@ export const useCardsStore = defineStore('cards', {
       const { data, error } = await supabase
         .from('cards')
         .insert({
-          project_id: this.project.id,
+          owner_id: user.value.sub,
           bujo_symbol: draft.bujoSymbol,
-          card_type: draft.cardType,
           title: draft.title,
-          bucket,
+          time_frame: timeFrame,
           position: optimisticCard.position
         })
         .select('*, checklist:card_checklist_items(*)')
@@ -138,7 +126,7 @@ export const useCardsStore = defineStore('cards', {
       const index = this.cards.findIndex(c => c.id === tempId)
       if (error) {
         if (isNetworkError(error)) {
-          if (user.value) await this.queueOfflineCard(tempId, draft, bucket, optimisticCard.position, user.value.sub)
+          await this.queueOfflineCard(tempId, draft, timeFrame, optimisticCard.position, user.value.sub)
           return
         }
         if (index !== -1) this.cards.splice(index, 1)
@@ -148,14 +136,12 @@ export const useCardsStore = defineStore('cards', {
       if (index !== -1) this.cards.splice(index, 1, data as Card)
     },
 
-    async queueOfflineCard(localId: string, draft: CardDraft, bucket: CardBucket, position: number, userId: string) {
-      if (!this.project) return
+    async queueOfflineCard(localId: string, draft: CardDraft, timeFrame: TimeFrame, position: number, userId: string) {
       const entry: PendingCard = {
         localId,
         userId,
-        projectId: this.project.id,
         draft,
-        bucket,
+        timeFrame,
         position,
         createdAt: new Date().toISOString(),
         status: 'pending'
@@ -172,13 +158,14 @@ export const useCardsStore = defineStore('cards', {
         if (this.cards.some(c => c.id === pending.localId)) continue
         this.cards.push({
           id: pending.localId,
-          project_id: pending.projectId,
+          owner_id: pending.userId,
           bujo_symbol: pending.draft.bujoSymbol,
-          card_type: pending.draft.cardType,
           title: pending.draft.title,
-          progress: 0,
+          content: null,
+          progress_percent: 0,
           visibility: 'private',
-          bucket: pending.bucket,
+          time_frame: pending.timeFrame,
+          target_date: null,
           position: pending.position,
           created_at: pending.createdAt,
           updated_at: pending.createdAt,
@@ -197,11 +184,10 @@ export const useCardsStore = defineStore('cards', {
         const { data, error } = await supabase
           .from('cards')
           .insert({
-            project_id: pending.projectId,
+            owner_id: pending.userId,
             bujo_symbol: pending.draft.bujoSymbol,
-            card_type: pending.draft.cardType,
             title: pending.draft.title,
-            bucket: pending.bucket,
+            time_frame: pending.timeFrame,
             position: pending.position
           })
           .select('*, checklist:card_checklist_items(*)')
@@ -244,26 +230,6 @@ export const useCardsStore = defineStore('cards', {
       }
     },
 
-    async setCardType(cardId: string, cardType: Card['card_type']) {
-      if (!isOnline()) { this.error = OFFLINE_MESSAGE; return }
-
-      const card = this.cards.find(c => c.id === cardId)
-      if (!card) return
-      const previous = card.card_type
-      card.card_type = cardType
-
-      const supabase = useSupabaseClient()
-      const { error } = await supabase
-        .from('cards')
-        .update({ card_type: cardType })
-        .eq('id', cardId)
-
-      if (error) {
-        card.card_type = previous
-        this.error = error.message
-      }
-    },
-
     async deleteCard(cardId: string) {
       if (!isOnline()) { this.error = OFFLINE_MESSAGE; return }
 
@@ -280,29 +246,29 @@ export const useCardsStore = defineStore('cards', {
       }
     },
 
-    async moveCard(cardId: string, bucket: CardBucket, position: number) {
+    async moveCard(cardId: string, timeFrame: TimeFrame, position: number) {
       if (!isOnline()) { this.error = OFFLINE_MESSAGE; return }
 
       const card = this.cards.find(c => c.id === cardId)
       if (!card) return
-      const previous = { bucket: card.bucket, position: card.position }
-      card.bucket = bucket
+      const previous = { timeFrame: card.time_frame, position: card.position }
+      card.time_frame = timeFrame
       card.position = position
 
       const supabase = useSupabaseClient()
       const { error } = await supabase
         .from('cards')
-        .update({ bucket, position })
+        .update({ time_frame: timeFrame, position })
         .eq('id', cardId)
 
       if (error) {
-        card.bucket = previous.bucket
+        card.time_frame = previous.timeFrame
         card.position = previous.position
         this.error = error.message
       }
     },
 
-    async reorderCards(bucket: CardBucket, orderedIds: string[]) {
+    async reorderCards(timeFrame: TimeFrame, orderedIds: string[]) {
       if (!isOnline()) { this.error = OFFLINE_MESSAGE; return }
 
       const supabase = useSupabaseClient()
@@ -312,7 +278,7 @@ export const useCardsStore = defineStore('cards', {
       })
 
       const updates = orderedIds.map((id, position) =>
-        supabase.from('cards').update({ position, bucket }).eq('id', id)
+        supabase.from('cards').update({ position, time_frame: timeFrame }).eq('id', id)
       )
       const results = await Promise.all(updates)
       const failed = results.find(r => r.error)
@@ -329,8 +295,8 @@ export const useCardsStore = defineStore('cards', {
 
       const previousDone = item.done
       item.done = !item.done
-      const previousProgress = card.progress
-      card.progress = computeProgress(card.checklist)
+      const previousProgress = card.progress_percent
+      card.progress_percent = computeProgress(card.checklist)
 
       const supabase = useSupabaseClient()
       const { error: itemError } = await supabase
@@ -340,14 +306,14 @@ export const useCardsStore = defineStore('cards', {
 
       if (itemError) {
         item.done = previousDone
-        card.progress = previousProgress
+        card.progress_percent = previousProgress
         this.error = itemError.message
         return
       }
 
       const { error: progressError } = await supabase
         .from('cards')
-        .update({ progress: card.progress })
+        .update({ progress_percent: card.progress_percent })
         .eq('id', cardId)
 
       if (progressError) this.error = progressError.message
@@ -394,8 +360,8 @@ export const useCardsStore = defineStore('cards', {
       if (index === -1) return
 
       const [removed] = card.checklist.splice(index, 1)
-      const previousProgress = card.progress
-      card.progress = computeProgress(card.checklist)
+      const previousProgress = card.progress_percent
+      card.progress_percent = computeProgress(card.checklist)
 
       const supabase = useSupabaseClient()
       const { error: deleteError } = await supabase
@@ -405,14 +371,14 @@ export const useCardsStore = defineStore('cards', {
 
       if (deleteError) {
         card.checklist.splice(index, 0, removed)
-        card.progress = previousProgress
+        card.progress_percent = previousProgress
         this.error = deleteError.message
         return
       }
 
       const { error: progressError } = await supabase
         .from('cards')
-        .update({ progress: card.progress })
+        .update({ progress_percent: card.progress_percent })
         .eq('id', cardId)
 
       if (progressError) this.error = progressError.message
