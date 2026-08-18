@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { BUJO_GLYPHS, BUJO_LABELS } from '~/utils/bujoGlyph'
 
-const symbols = ['task', 'completed', 'migrated', 'priority', 'note'] as const
+const symbols = ['task', 'completed', 'migrated', 'scheduled', 'priority', 'note', 'event'] as const
 </script>
 
 <template>

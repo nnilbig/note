@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
-import type { Card, CardDraft, ChecklistItem, DailyReview, PendingCard, TimeFrame, Workspace } from '~/types/card'
+import type { BuJoSymbol, Card, CardDraft, ChecklistItem, DailyReview, PendingCard, TimeFrame, Workspace } from '~/types/card'
 import { computeProgress } from '~/utils/progress'
 import { isNetworkError, isOnline } from '~/utils/networkError'
+import { nextTimeFrame } from '~/utils/timeFrameLabel'
 import {
   enqueuePendingCard,
   listPendingCards,
@@ -251,9 +252,12 @@ export const useCardsStore = defineStore('cards', {
       if (!isOnline()) { this.error = OFFLINE_MESSAGE; return }
 
       const card = this.cards.find(c => c.id === cardId)
-      // 'note' isn't a task and has nothing to complete; 'migrated' is a
-      // terminal state owned by the migrate button, not this toggle.
-      if (!card || card.bujo_symbol === 'note' || card.bujo_symbol === 'migrated') return
+      // 'note'/'event' aren't tasks and have nothing to complete;
+      // 'migrated'/'cancelled' are owned by the advanceCardState cycle --
+      // un-migrate or un-cancel first, then complete.
+      if (!card) return
+      const NOT_COMPLETABLE: BuJoSymbol[] = ['note', 'event', 'migrated', 'cancelled']
+      if (NOT_COMPLETABLE.includes(card.bujo_symbol)) return
 
       const previous = card.bujo_symbol
       card.bujo_symbol = previous === 'completed' ? 'task' : 'completed'
@@ -266,6 +270,57 @@ export const useCardsStore = defineStore('cards', {
 
       if (error) {
         card.bujo_symbol = previous
+        this.error = error.message
+      }
+    },
+
+    // Swipe-left / migrate-cycle: tasks and priorities step forward through
+    // time frames, flagged 'migrated' (or 'scheduled' when they land in the
+    // Future Log specifically) -- swiping again cancels, and once more
+    // reverts to a plain task. Notes/events have no status cycle, so they
+    // just carry forward to the next time frame unchanged, like the old
+    // migrate button did for every card type.
+    async advanceCardState(cardId: string) {
+      if (!isOnline()) { this.error = OFFLINE_MESSAGE; return }
+
+      const card = this.cards.find(c => c.id === cardId)
+      if (!card || card.bujo_symbol === 'completed') return
+
+      if (card.bujo_symbol === 'note' || card.bujo_symbol === 'event') {
+        const target = nextTimeFrame(card.time_frame)
+        await this.moveCard(cardId, target, this.cardsInTimeFrame(target).length)
+        return
+      }
+
+      const previous = { symbol: card.bujo_symbol, timeFrame: card.time_frame, position: card.position }
+      let nextSymbol: BuJoSymbol
+      let nextFrame = card.time_frame
+
+      if (card.bujo_symbol === 'migrated' || card.bujo_symbol === 'scheduled') {
+        nextSymbol = 'cancelled'
+      } else if (card.bujo_symbol === 'cancelled') {
+        nextSymbol = 'task'
+      } else {
+        nextFrame = nextTimeFrame(card.time_frame)
+        nextSymbol = nextFrame === 'future' ? 'scheduled' : 'migrated'
+      }
+
+      const nextPosition = nextFrame === card.time_frame ? card.position : this.cardsInTimeFrame(nextFrame).length
+
+      card.bujo_symbol = nextSymbol
+      card.time_frame = nextFrame
+      card.position = nextPosition
+
+      const supabase = useSupabaseClient()
+      const { error } = await supabase
+        .from('cards')
+        .update({ bujo_symbol: nextSymbol, time_frame: nextFrame, position: nextPosition })
+        .eq('id', cardId)
+
+      if (error) {
+        card.bujo_symbol = previous.symbol
+        card.time_frame = previous.timeFrame
+        card.position = previous.position
         this.error = error.message
       }
     },

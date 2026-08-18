@@ -126,4 +126,25 @@ describe('parseRapidLogEntry', () => {
       raw: '~ x 0900-0910 回信 #email'
     })
   })
+
+  it('parses scheduled with <', () => {
+    expect(parseRapidLogEntry('< Ship v2')).toMatchObject({ bujoSymbol: 'scheduled', title: 'Ship v2' })
+  })
+
+  it('parses event with @', () => {
+    expect(parseRapidLogEntry('@ Team offsite')).toMatchObject({ bujoSymbol: 'event', title: 'Team offsite' })
+  })
+
+  it('combines scheduled symbol with a time range', () => {
+    expect(parseRapidLogEntry('< 0900-0930 開會')).toMatchObject({
+      bujoSymbol: 'scheduled',
+      title: '開會',
+      scheduledStart: '09:00:00',
+      scheduledEnd: '09:30:00'
+    })
+  })
+
+  it('has no creation-time trigger for cancelled -- untagged text stays task', () => {
+    expect(parseRapidLogEntry('~ Random text')).toMatchObject({ bujoSymbol: 'task' })
+  })
 })

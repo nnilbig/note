@@ -3,12 +3,17 @@ import type { BuJoSymbol, CardDraft } from '~/types/card'
 // Order matters: check more specific/ambiguous patterns appropriately.
 // 'x'/'X' is deliberately required to be followed by whitespace (not just
 // any char) so words like "xylophone" aren't misread as a "completed" mark.
+// No creation-time prefix for 'cancelled' -- it's only reachable through
+// the migrate/cancel interaction cycle (advanceCardState), never typed at
+// creation, since nothing is created pre-cancelled.
 const RULES: Array<{ pattern: RegExp, symbol: BuJoSymbol }> = [
   { pattern: /^[•-]\s*/, symbol: 'task' },
   { pattern: /^[✕xX](?=\s|$)\s*/, symbol: 'completed' },
   { pattern: /^>\s*/, symbol: 'migrated' },
+  { pattern: /^<\s*/, symbol: 'scheduled' },
   { pattern: /^\*\s*/, symbol: 'priority' },
-  { pattern: /^!\s*/, symbol: 'note' }
+  { pattern: /^!\s*/, symbol: 'note' },
+  { pattern: /^@\s*/, symbol: 'event' }
 ]
 
 // No \w-based pattern here since \w is ASCII-only and would miss tags like

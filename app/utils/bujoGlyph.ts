@@ -5,7 +5,10 @@ export const BUJO_GLYPHS: Record<BuJoSymbol, string> = {
   completed: '✕',
   migrated: '>',
   priority: '*',
-  note: '–'
+  note: '–',
+  event: '○',
+  scheduled: '<',
+  cancelled: '~'
 }
 
 export const BUJO_LABELS: Record<BuJoSymbol, string> = {
@@ -13,5 +16,8 @@ export const BUJO_LABELS: Record<BuJoSymbol, string> = {
   completed: '完成',
   migrated: '順延',
   priority: '優先',
-  note: '筆記'
+  note: '筆記',
+  event: '事件',
+  scheduled: '排程',
+  cancelled: '取消'
 }

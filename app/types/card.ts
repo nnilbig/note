@@ -1,4 +1,4 @@
-export type BuJoSymbol = 'task' | 'completed' | 'migrated' | 'priority' | 'note'
+export type BuJoSymbol = 'task' | 'completed' | 'migrated' | 'priority' | 'note' | 'event' | 'scheduled' | 'cancelled'
 export type TimeFrame = 'daily' | 'weekly' | 'monthly' | 'future'
 export type CardVisibility = 'private' | 'shared'
 export type MemberRole = 'owner' | 'member' | 'viewer'
